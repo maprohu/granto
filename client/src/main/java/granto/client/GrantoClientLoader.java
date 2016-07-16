@@ -7,8 +7,8 @@ import sun.misc.Service;
  */
 public class GrantoClientLoader {
 
-    public static GrantoClient newInstance() {
-        return (GrantoClient) Service.providers(GrantoClient.class).next();
+    public static GrantoClientFactory load() {
+        return (GrantoClientFactory) Service.providers(GrantoClientFactory.class).next();
     }
 
 }

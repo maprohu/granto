@@ -19,7 +19,7 @@ public class GrantoClientImpl implements GrantoClient {
     final ParentLastURLClassLoader classLoader;
     final GrantoClient delegate;
 
-    public GrantoClientImpl() {
+    public GrantoClientImpl(String uniqueId) {
         try {
             jar = File.createTempFile("granto", ".jar");
             ReadableByteChannel rbc = Channels.newChannel(getClass().getResourceAsStream("granto.jar"));

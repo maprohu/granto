@@ -10,7 +10,7 @@ object GrantoTestingApp {
 
   def main(args: Array[String]) {
 
-    val granto = GrantoClientLoader.newInstance()
+    val granto = GrantoClientLoader.load().newInstance("")
 
     val api = granto.load(classOf[GrantoTestingApi])
 

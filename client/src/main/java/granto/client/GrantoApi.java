@@ -5,7 +5,6 @@ package granto.client;
  */
 public interface GrantoApi {
 
-
     void close();
 
 }
