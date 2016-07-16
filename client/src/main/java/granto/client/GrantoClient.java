@@ -7,6 +7,10 @@ import sun.misc.Service;
  */
 public interface GrantoClient {
 
-    public <T extends GrantoApi> T load(Class<T> clazz);
+    String urlPropertyName = "granto.url";
+
+    <T extends GrantoApi> T load(Class<T> clazz);
+
+    void close();
 
 }

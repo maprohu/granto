@@ -7,4 +7,11 @@ import granto.client.GrantoApi
   */
 trait GrantoTestingApi extends GrantoApi {
 
+  def canView(who: String, what: Item) : Boolean
+
+}
+
+trait Item {
+  def color : String
+  def size : Int
 }
