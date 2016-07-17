@@ -4,16 +4,9 @@
 
     <parent>
         <groupId>granto</groupId>
-        <artifactId>granto</artifactId>
+        <artifactId>granto-libs</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>granto-libs</artifactId>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>shared</module>
-        <module>client-bin</module>
-        <module>client</module>
-    </modules>
+    <artifactId>granto-lib-shared</artifactId>
 
 </project>

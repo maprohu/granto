@@ -9,4 +9,15 @@
     </parent>
     <artifactId>granto-server</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-stream-experimental_2.11</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>maprohu</groupId>
+            <artifactId>scala-ext-common</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>
