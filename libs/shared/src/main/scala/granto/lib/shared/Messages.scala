@@ -26,7 +26,7 @@ case class Message[T](
 sealed trait ClientToServer
 sealed trait ServerToClient
 
-object Tick extends ClientToServer with ServerToClient
+case class Tick() extends ClientToServer with ServerToClient
 
 case class Request(
   className: String

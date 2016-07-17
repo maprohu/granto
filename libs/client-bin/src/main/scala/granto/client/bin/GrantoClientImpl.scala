@@ -4,19 +4,19 @@ import java.io.File
 import java.lang.reflect.{InvocationHandler, Method}
 import java.util.Collections
 
-import akka.actor.{ActorRef, ActorSystem}
-import akka.stream.{ActorMaterializer, OverflowStrategy}
+import akka.actor.{ActorRef, ActorSystem, Status}
+import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.stream.scaladsl.{Keep, Sink, Source, Tcp}
 import ch.qos.logback.classic.LoggerContext
 import com.typesafe.config.ConfigFactory
-import granto.client.impl.ParentLastURLClassLoader
 import granto.client.{GrantoAccessDenied, GrantoApi, GrantoClient, GrantoClientFactory}
 import granto.lib.shared._
-import maprohu.scalaext.common.Stateful
+import maprohu.scalaext.common.{Cancel, Stateful}
 import org.slf4j.LoggerFactory
 import osgi6.actor.ActorSystemActivator
 import osgi6.akka.slf4j.AkkaSlf4j
-import osgi6.akka.stream.Materializers
+import osgi6.akka.stream.{Materializers, Stages}
+import osgi6.common.ParentLastURLClassLoader
 import osgi6.logback.Configurator
 import sbt.io.IO
 
@@ -24,7 +24,7 @@ import scala.util.Properties
 import sbt.io.Path._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.{Await, Future, Promise}
 import scala.collection.immutable._
 
 /**
@@ -108,61 +108,80 @@ object GrantoClientImpl {
       s"granto-client-${uniqueId}",
       AkkaSlf4j.config.withFallback(
         ActorSystemActivator.forcedConfig.withFallback(
-          ConfigFactory.parseURL(getClass.getResource("/reference.conf"))
+          ConfigFactory.parseURL(getClass.getClassLoader.getResource("reference.conf"))
         )
-      )
+      ),
+      getClass.getClassLoader
     )
     implicit val materializer = Materializers.resume
+    import actorSystem.dispatcher
 
     val subscriptions = Stateful(Map[String, Seq[Subscription]]().withDefaultValue(Seq()))
 
     val outRef = Stateful(Option.empty[ActorRef])
 
-    Source(Stream.continually(endpoints).flatten)
+    val outgoingCancels = Stateful.cancels
+
+    val (connectStop, connectDone) = Source(Stream.continually(endpoints).flatten)
+      .throttle(1, 3.second, 1, ThrottleMode.Shaping)
+      .viaMat(
+        Stages.stopper
+      )(Keep.right)
       .mapAsync(1)({ endpoint =>
 
-        val (ref, done) = Source.actorRef[ClientToServer](256, OverflowStrategy.dropHead)
-          .prepend(
-            Source(subscriptions.extract.keys.map(Request(_)).to[Iterable])
-          )
-          .via(
-            Protocol.stack[ServerToClient, ClientToServer]
-              .join(
-                Tcp().outgoingConnection(
-                  endpoint.host,
-                  endpoint.port
-                )
+        outgoingCancels.add({ () =>
+          val (ref, done) = subscriptions.process({ subs =>
+             Source.actorRef[ClientToServer](256, OverflowStrategy.dropHead)
+              .prepend(
+                Source(subs.keys.map(Request(_)).to[Iterable])
               )
-          )
-          .toMat(
-            Sink.foreach({
-              case m : Initial =>
-                subscriptions.extract(m.className).foreach(
-                  _.initial(m)
-                )
-              case m : Update =>
-                subscriptions.extract(m.className).foreach(
-                  _.update(m)
-                )
-              case Tick =>
-              case Error(msg) =>
-                actorSystem.log.error("granto server error: {}", msg)
+              .via(
+                Protocol.stack[ServerToClient, ClientToServer]
+                  .join(
+                    Tcp().outgoingConnection(
+                      endpoint.host,
+                      endpoint.port
+                    )
+                  )
+              )
+              .toMat(
+                Sink.foreach({
+                  case m : Initial =>
+                    subscriptions.extract(m.className).foreach(
+                      _.initial(m)
+                    )
+                  case m : Update =>
+                    subscriptions.extract(m.className).foreach(
+                      _.update(m)
+                    )
+                  case Tick() =>
+                  case Error(msg) =>
+                    actorSystem.log.error("granto server error: {}", msg)
 
+                })
+              )(Keep.both)
+              .run()
+          })
+
+          outRef.update(_ => Some(Some(ref)))
+
+
+          Cancel(
+            () => ref ! Status.Success,
+            done.recover({
+              case ex : Throwable =>
+                actorSystem.log.error(ex, "disconnected from granto server")
             })
-          )(Keep.both)
-          .run()
+          )
 
-        outRef.update(_ => Some(Some(ref)))
-
-        done.recover({
-          case ex : Throwable =>
-            actorSystem.log.error(ex, "disconnected from granto server")
-        })
+        }).map(_.done).getOrElse(
+          Future.successful()
+        )
 
       })
       .toMat(
         Sink.ignore
-      )(Keep.right)
+      )(Keep.both)
       .run()
 
     new GrantoClient {
@@ -205,12 +224,36 @@ object GrantoClientImpl {
           )
         })
 
-        outRef.extract.get ! Request(className)
+        outRef.extract.foreach(_ ! Request(className))
 
-        Await.result(promise.future, 1.minute).wrapper()
+        val del = Await.result(promise.future, 1.minute)
+
+        del.setCloseCallback({ () =>
+          subscriptions.update({ map =>
+            Some(
+              map.updated(className, map(className) diff Seq(sub))
+            )
+          })
+        })
+
+        del.wrapper()
       }
 
-      override def close(): Unit = ???
+      override def close(): Unit = {
+        connectStop()
+
+        Await.ready(
+          for {
+            _ <- outgoingCancels.cancel.perform
+            _ <- connectDone
+          } yield {
+          },
+          15.seconds
+        )
+
+        actorSystem.shutdown()
+        actorSystem.awaitTermination(10.seconds)
+      }
     }
 
   }

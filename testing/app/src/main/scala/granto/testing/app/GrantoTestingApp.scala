@@ -12,11 +12,11 @@ object GrantoTestingApp {
 
     System.setProperty(GrantoClient.urlPropertyName, "localhost:9889")
 
-    val granto = GrantoClientLoader.load().newInstance("")
+    val granto = GrantoClientLoader.load().newInstance("testing")
 
     val api = granto.load(classOf[GrantoTestingApi])
 
-    val result = api.canView(
+    def result = api.canView(
       "john",
       new Item {
         override def color: String = "blue"
@@ -24,7 +24,12 @@ object GrantoTestingApp {
       }
     )
 
-    println(result)
+    while (true) {
+      println(result)
+      Thread.sleep(300)
+
+    }
+
   }
 
 }

@@ -7,7 +7,12 @@ import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import granto.lib.shared.{Binary, Initial}
 import granto.server.{GrantoServer, GrantoServerConfig}
+import granto.testing.api.GrantoTestingApi
+import granto.testing.impl.GrantoTestingApiImpl
+import granto.testing.wrapper.GrantoTestingWrapper
 import sbt.io.IO
+
+import scala.io.StdIn
 
 /**
   * Created by martonpapp on 17/07/16.
@@ -23,26 +28,54 @@ object RunGrantoTestingServer {
 
     implicit val config = GrantoServerConfig(9889)
 
+    val className =
+      classOf[GrantoTestingApi].getName
 
     val (running, cancel) = GrantoServer.run
 
     val initial =
       Initial(
+        className,
         delegate = Binary(
           IO.readBytes(new File("testing/wrapper/target/wrapper.jar")),
-          "granto.testing.wrapper.GrantoTestingWrapper"
+          classOf[GrantoTestingWrapper].getName
         ),
         implementation = Binary(
           IO.readBytes(new File("testing/impl/target/impl.jar")),
-          "granto.testing.impl.GrantoTestingApiImpl"
+          classOf[GrantoTestingApiImpl].getName
         )
       )
 
 
     running(
-      "granto.testing.api.GrantoTestingApi",
       initial
     )
+
+    while (true) {
+      StdIn.readLine()
+
+      val initial2 =
+        Initial(
+          className,
+          delegate = Binary(
+            IO.readBytes(new File("testing/wrapper/target/wrapper.jar")),
+            classOf[GrantoTestingWrapper].getName
+          ),
+          implementation = Binary(
+            IO.readBytes(new File("testing/impl2/target/impl2.jar")),
+            classOf[GrantoTestingApiImpl].getName
+          )
+        )
+
+
+      running(
+        initial2
+      )
+
+      println("updated")
+
+
+    }
   }
 
 }

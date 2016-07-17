@@ -15,7 +15,7 @@ import scala.concurrent.Future
   */
 object GrantoServer {
 
-  type RunningUpdater = (String, Initial) => Unit
+  type RunningUpdater = Initial => Unit
 
   case class DataItem(
     initial: () => Initial,
@@ -43,7 +43,8 @@ object GrantoServer {
       }
     )
 
-    val runningUpdater : RunningUpdater = { (className, initial) =>
+    val runningUpdater : RunningUpdater = { initial =>
+      import initial.className
 
       data.update({ map =>
         map.get(className)
@@ -79,6 +80,7 @@ object GrantoServer {
                   { update =>
                     initialHolder.update(_ => Some(update))
                     add ! Update(
+                      className,
                       update.implementation
                     )
                   },
@@ -142,7 +144,7 @@ object GrantoServer {
             }
           })
           .merge(
-            Source.tick(Messages.TickInterval, Messages.TickInterval, Tick)
+            Source.tick(Messages.TickInterval, Messages.TickInterval, Tick())
           )
           .join(
             Protocol.stack[ClientToServer, ServerToClient]
@@ -168,7 +170,7 @@ object GrantoServer {
       }).getOrElse(
         binding.foreach(_.unbind())
       )
-    })
+    }).run()
 
     cancels.cancel
 

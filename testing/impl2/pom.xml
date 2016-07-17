@@ -4,20 +4,21 @@
 
     <parent>
         <groupId>granto</groupId>
-        <artifactId>granto</artifactId>
+        <artifactId>granto-testing</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>granto-testing</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>granto-testing-impl2</artifactId>
 
-    <modules>
-        <module>api</module>
-        <module>wrapper</module>
-        <module>impl</module>
-        <module>impl2</module>
-        <module>server</module>
-        <module>app</module>
+    <build>
+        <finalName>impl2</finalName>
+    </build>
 
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>granto</groupId>
+            <artifactId>granto-testing-api</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 
 </project>
