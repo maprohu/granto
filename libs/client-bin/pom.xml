@@ -72,6 +72,12 @@
         </dependency>
         <dependency>
             <groupId>granto</groupId>
+            <artifactId>granto-lib-client</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>granto</groupId>
             <artifactId>granto-lib-shared</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>

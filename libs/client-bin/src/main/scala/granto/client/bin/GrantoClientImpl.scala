@@ -2,12 +2,14 @@ package granto.client.bin
 
 import java.io.File
 import java.lang.reflect.{InvocationHandler, Method}
+import java.util.Collections
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.{Keep, Sink, Source, Tcp}
 import ch.qos.logback.classic.LoggerContext
 import com.typesafe.config.ConfigFactory
+import granto.client.impl.ParentLastURLClassLoader
 import granto.client.{GrantoAccessDenied, GrantoApi, GrantoClient, GrantoClientFactory}
 import granto.lib.shared._
 import maprohu.scalaext.common.Stateful
@@ -16,12 +18,14 @@ import osgi6.actor.ActorSystemActivator
 import osgi6.akka.slf4j.AkkaSlf4j
 import osgi6.akka.stream.Materializers
 import osgi6.logback.Configurator
+import sbt.io.IO
 
 import scala.util.Properties
 import sbt.io.Path._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Promise}
+import scala.collection.immutable._
 
 /**
   * Created by martonpapp on 16/07/16.
@@ -112,27 +116,48 @@ object GrantoClientImpl {
 
     val subscriptions = Stateful(Map[String, Seq[Subscription]]().withDefaultValue(Seq()))
 
-    val (ref, pub) = Source.actorRef[ServerToClient](1024, OverflowStrategy.dropHead)
-      .toMat(
-        Sink.foreach({
-          case m : Initial =>
-            subscriptions.extract(m.className).foreach(
-              _.initial(m)
-            )
-          case m : Update =>
-            subscriptions.extract(m.className).foreach(
-              _.update(m)
-            )
-          case Tick =>
-          case Error(msg) =>
-            actorSystem.log.error("granto server error: {}", msg)
-
-        })
-      )(Keep.both)
-      .run()
+    val outRef = Stateful(Option.empty[ActorRef])
 
     Source(Stream.continually(endpoints).flatten)
       .mapAsync(1)({ endpoint =>
+
+        val (ref, done) = Source.actorRef[ClientToServer](256, OverflowStrategy.dropHead)
+          .prepend(
+            Source(subscriptions.extract.keys.map(Request(_)).to[Iterable])
+          )
+          .via(
+            Protocol.stack[ServerToClient, ClientToServer]
+              .join(
+                Tcp().outgoingConnection(
+                  endpoint.host,
+                  endpoint.port
+                )
+              )
+          )
+          .toMat(
+            Sink.foreach({
+              case m : Initial =>
+                subscriptions.extract(m.className).foreach(
+                  _.initial(m)
+                )
+              case m : Update =>
+                subscriptions.extract(m.className).foreach(
+                  _.update(m)
+                )
+              case Tick =>
+              case Error(msg) =>
+                actorSystem.log.error("granto server error: {}", msg)
+
+            })
+          )(Keep.both)
+          .run()
+
+        outRef.update(_ => Some(Some(ref)))
+
+        done.recover({
+          case ex : Throwable =>
+            actorSystem.log.error(ex, "disconnected from granto server")
+        })
 
       })
       .toMat(
@@ -143,30 +168,60 @@ object GrantoClientImpl {
     new GrantoClient {
       override def load[T <: GrantoApi](clazz: Class[T]): T = {
         val className = clazz.getName
-        val promise = Promise[Initial]()
+        val promise = Promise[GrantoApiWrapper[T]]()
+
+        val delegate = Stateful(Option.empty[GrantoApiWrapper[T]])
 
         val sub = Subscription(
           className,
           { initial =>
-            
+            delegate.update({ dopt =>
+              dopt
+                .map({ d =>
+                  d.setDelegate(loadBinary[T](initial.implementation))
+                  None
+                })
+                .getOrElse({
+                  val d = loadBinary[GrantoApiWrapper[T]](initial.delegate)
+                  d.setDelegate(
+                    loadBinary[T](initial.implementation)
+                  )
+                  promise.trySuccess(d)
+                  Some(Some(d))
+                })
+            })
+          },
+          { update =>
+            delegate.extract.get.setDelegate(
+              loadBinary[T](update.update)
+            )
           }
 
         )
 
-        Source.fromPublisher(pub)
-          .collect({
-            case m : Initial if m.className == className =>
+        subscriptions.update({ map =>
+          Some(
+            map.updated(className, map(className) :+ sub)
+          )
+        })
 
-          })
+        outRef.extract.get ! Request(className)
 
-
-        Await.result(promise.future, 1.minute)
-
+        Await.result(promise.future, 1.minute).wrapper()
       }
 
       override def close(): Unit = ???
     }
 
+  }
+
+  def loadBinary[T](
+    binary: Binary
+  ) : T = {
+    val jar = File.createTempFile(binary.className, ".jar")
+    IO.write(jar, binary.jar)
+    val classLoader = new ParentLastURLClassLoader(Collections.singletonList(jar.toURI.toURL))
+    classLoader.loadClass(binary.className).newInstance().asInstanceOf[T]
   }
 
 }
