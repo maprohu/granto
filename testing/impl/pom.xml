@@ -7,20 +7,13 @@
         <artifactId>granto-testing</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>granto-testing-server</artifactId>
+    <artifactId>granto-testing-impl</artifactId>
+
+    <build>
+        <finalName>impl</finalName>
+    </build>
 
     <dependencies>
-
-        <dependency>
-            <groupId>granto</groupId>
-            <artifactId>granto-server</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.scala-sbt</groupId>
-            <artifactId>io_2.11</artifactId>
-            <version>1.0.0-M3</version>
-        </dependency>
         <dependency>
             <groupId>granto</groupId>
             <artifactId>granto-testing-api</artifactId>

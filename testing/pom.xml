@@ -12,6 +12,8 @@
 
     <modules>
         <module>api</module>
+        <module>wrapper</module>
+        <module>impl</module>
         <module>server</module>
         <module>app</module>
 

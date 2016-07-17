@@ -8,6 +8,8 @@ import sun.misc.Service;
 public interface GrantoClient {
 
     String urlPropertyName = "granto.url";
+    String storagePropertyName = "granto.storage";
+    String debugPropertyName = "granto.debug";
 
     <T extends GrantoApi> T load(Class<T> clazz);
 

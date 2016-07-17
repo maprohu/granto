@@ -1,6 +1,6 @@
 package granto.testing.app
 
-import granto.client.GrantoClientLoader
+import granto.client.{GrantoClient, GrantoClientLoader}
 import granto.testing.api.{GrantoTestingApi, Item}
 
 /**
@@ -9,6 +9,8 @@ import granto.testing.api.{GrantoTestingApi, Item}
 object GrantoTestingApp {
 
   def main(args: Array[String]) {
+
+    System.setProperty(GrantoClient.urlPropertyName, "localhost:9889")
 
     val granto = GrantoClientLoader.load().newInstance("")
 

@@ -11,6 +11,7 @@
         <akka.version>2.3.15</akka.version>
         <akka-stream.version>2.0.4</akka-stream.version>
         <scala-ext.version>1.0.3</scala-ext.version>
+        <osgi6.version>1.0.7-SNAPSHOT</osgi6.version>
     </properties>
 
     <build>
@@ -204,7 +205,56 @@
                 <version>${scala-ext.version}</version>
             </dependency>
 
-
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-akka-slf4j</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-testing</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-runtime</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-akka-stream</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-actor</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-scalarx</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-akka-http-multi</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-akka-http-strict</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-strict-api</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>osgi6</groupId>
+                <artifactId>osgi6-logback</artifactId>
+                <version>${osgi6.version}</version>
+            </dependency>
         </dependencies>
 
     </dependencyManagement>

@@ -2,6 +2,7 @@ package granto.client.impl;
 
 import granto.client.GrantoApi;
 import granto.client.GrantoClient;
+import granto.client.GrantoClientFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -31,7 +32,9 @@ public class GrantoClientImpl implements GrantoClient {
                     Collections.singletonList(jar.toURI().toURL())
             );
 
-            delegate = (GrantoClient) classLoader.loadClass("granto.client.bin.GrantoClientImpl").newInstance();
+            GrantoClientFactory delegateFactory = (GrantoClientFactory) classLoader.loadClass("granto.client.bin.GrantoClientFactoryImpl").newInstance();
+
+            delegate = delegateFactory.newInstance(uniqueId);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
